@@ -1,0 +1,173 @@
+// Skema mengikuti SRS §4.1–4.2 (Kamus Data) dan SAD §8 (Arsitektur Data).
+// Stok TIDAK disimpan: dihitung dari detail transaksi berstatus AKTIF (SRS KF-STK-01, SAD §8.4).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  PETUGAS_GUDANG
+}
+
+enum Status {
+  AKTIF
+  NONAKTIF
+}
+
+enum JenisTransaksi {
+  STOK_AWAL
+  MASUK
+  KELUAR
+}
+
+enum StatusTransaksi {
+  AKTIF
+  DIBATALKAN
+}
+
+enum JenisPengajuan {
+  KOREKSI_JUMLAH
+  PEMBATALAN
+}
+
+enum StatusPengajuan {
+  MENUNGGU
+  DISETUJUI
+  DITOLAK
+}
+
+model User {
+  id                 Int       @id @default(autoincrement())
+  name               String    @db.VarChar(100)
+  username           String    @unique @db.VarChar(50)
+  passwordHash       String
+  role               Role
+  status             Status    @default(AKTIF)
+  mustChangePassword Boolean   @default(false) // wajib_ganti_password
+  failedLogins       Int       @default(0) // KF-AUT-06
+  lockedUntil        DateTime?
+  lastLogin          DateTime?
+  createdAt          DateTime  @default(now())
+
+  transactions       Transaction[]       @relation("createdBy")
+  cancelled          Transaction[]       @relation("cancelledBy")
+  requests           CorrectionRequest[] @relation("requestedBy")
+  decisions          CorrectionRequest[] @relation("decidedBy")
+  activities         ActivityLog[]
+}
+
+model Category {
+  id     Int    @id @default(autoincrement())
+  name   String @unique @db.VarChar(50)
+  items  Item[]
+}
+
+model Item {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique @db.VarChar(20)
+  name          String   @db.VarChar(100)
+  categoryId    Int
+  category      Category @relation(fields: [categoryId], references: [id], onDelete: Restrict) // KF-MST-06
+  unit          String   @db.VarChar(20)
+  purchasePrice Int // Rupiah, tanpa desimal
+  sellingPrice  Int
+  minStock      Int      @default(0)
+  status        Status   @default(AKTIF)
+
+  details           TransactionDetail[]
+  correctionDetails CorrectionDetail[]
+
+  @@index([categoryId])
+}
+
+model Transaction {
+  id           Int             @id @default(autoincrement())
+  number       String          @unique @db.VarChar(20) // BM-20260925-001
+  type         JenisTransaksi
+  date         DateTime        @db.Date
+  party        String?         @db.VarChar(100) // pihak_terkait: pemasok / tujuan
+  note         String?
+  status       StatusTransaksi @default(AKTIF)
+  createdById  Int
+  createdBy    User            @relation("createdBy", fields: [createdById], references: [id])
+  createdAt    DateTime        @default(now())
+
+  // KF-KOR-05: pembatalan menyimpan alasan, penyetuju, dan waktu
+  cancelReason  String?
+  cancelledById Int?
+  cancelledBy   User?     @relation("cancelledBy", fields: [cancelledById], references: [id])
+  cancelledAt   DateTime?
+
+  // transaksi pengganti hasil koreksi menunjuk ke transaksi yang dikoreksi
+  replacesId    Int?         @unique
+  replaces      Transaction? @relation("replacement", fields: [replacesId], references: [id])
+  replacedBy    Transaction? @relation("replacement")
+
+  details      TransactionDetail[]
+  requests     CorrectionRequest[]
+
+  @@index([type, date])
+  @@index([createdById])
+}
+
+model TransactionDetail {
+  id            Int         @id @default(autoincrement())
+  transactionId Int
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  itemId        Int
+  item          Item        @relation(fields: [itemId], references: [id], onDelete: Restrict) // KF-MST-05
+  qty           Int // > 0, dijaga CHECK constraint di migration
+
+  @@unique([transactionId, itemId])
+  @@index([itemId])
+}
+
+model CorrectionRequest {
+  id            Int             @id @default(autoincrement())
+  transactionId Int
+  transaction   Transaction     @relation(fields: [transactionId], references: [id])
+  type          JenisPengajuan
+  reason        String
+  status        StatusPengajuan @default(MENUNGGU)
+  requestedById Int
+  requestedBy   User            @relation("requestedBy", fields: [requestedById], references: [id])
+  requestedAt   DateTime        @default(now())
+  decidedById   Int?
+  decidedBy     User?           @relation("decidedBy", fields: [decidedById], references: [id])
+  decidedAt     DateTime?
+
+  details       CorrectionDetail[] // jumlah yang benar, hanya untuk KOREKSI_JUMLAH
+
+  @@index([status])
+  @@index([transactionId])
+}
+
+model CorrectionDetail {
+  id        Int               @id @default(autoincrement())
+  requestId Int
+  request   CorrectionRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId    Int
+  item      Item              @relation(fields: [itemId], references: [id])
+  qty       Int
+
+  @@unique([requestId, itemId])
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   @db.VarChar(50) // jenis_aktivitas, mis. "Login", "Ubah Harga"
+  detail    String
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
