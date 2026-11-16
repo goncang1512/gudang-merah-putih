@@ -1,0 +1,18 @@
+node_modules
+.next
+out
+.env*
+!.env.example
+*.log
+/generated
+
+graphify-out/
+tsconfig.tsbuildinfo
+
+# ===== Fitur (dibuka bertahap sesuai progress) =====
+/app/*/
+/components/
+/lib/
+/prisma/
+/proxy.ts
+/prisma.config.ts
