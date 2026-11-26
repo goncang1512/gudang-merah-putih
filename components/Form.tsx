@@ -1,9 +1,11 @@
 'use client';
 import {ReactNode, useActionState, useState} from 'react';
 import {useFormStatus} from 'react-dom';
+import {useRouter} from 'next/navigation';
 import type {Result} from '../lib/form';
 
-type Action = (fd: FormData) => Promise<Result>;
+// Endpoint API tujuan form, format "METHOD /api/path" (SAD §11.2), mis. "PATCH /api/items/3".
+type Action = string;
 
 export function Submit({children, className = 'btn btn-primary', disabled}: {children: ReactNode; className?: string; disabled?: boolean}) {
   const {pending} = useFormStatus();
@@ -17,16 +19,21 @@ export function Message({state}: {state: Result}) {
 }
 
 // Isian tidak hilang saat gagal simpan (SRS §5.4.2): input uncontrolled dan form tidak di-reset saat error.
+// Browser -> API lewat HTTPS (SAD §5.2). Respons {ok}/{error} (+ redirect) dari lib/api.ts.
 export function ActionForm({action, children, className, onSuccess}: {action: Action; children: ReactNode; className?: string; onSuccess?: (r: Result) => void}) {
+  const router = useRouter();
   const [state, formAction] = useActionState(async (_: Result, fd: FormData): Promise<Result> => {
+    const [method, url] = action.split(' ');
+    let r: {ok?: string; error?: string; redirect?: string};
     try {
-      const r = await action(fd);
-      if (r?.ok) onSuccess?.(r);
-      return r;
-    } catch (e) {
-      if (String((e as {digest?: string})?.digest).startsWith('NEXT_REDIRECT')) throw e;
+      r = await (await fetch(url, {method, body: fd})).json();
+    } catch {
       return {error: 'Gagal menyimpan. Periksa koneksi internet lalu coba lagi.'};
     }
+    if (r.redirect) router.replace(r.redirect);
+    else if (r.ok) router.refresh(); // muat ulang data halaman dari API
+    if (r.ok) onSuccess?.(r);
+    return {ok: r.ok, error: r.error};
   }, null);
   return <form action={formAction} className={className} style={{display: 'grid', gap: 12}}><Message state={state}/>{children}</form>;
 }

@@ -1,6 +1,6 @@
 // Data awal (SRS §2.5 asumsi 3). Jalankan: pnpm db:seed. Aman dijalankan ulang (skip jika sudah ada user).
 import {db} from '../lib/db';
-import {hashPassword} from '../lib/auth';
+import {hashPassword} from '../lib/services/auth';
 
 async function main() {
   if (await db.user.count()) return console.log('Database sudah berisi data, seed dilewati.');
