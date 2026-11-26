@@ -12,7 +12,8 @@
     "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
     "db:check": "tsx prisma/check.ts",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
