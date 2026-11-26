@@ -17,15 +17,15 @@ Akun seed: `admin` / `Admin12345` (Admin), `budi` / `Petugas123` dan `citra` / `
 
 Produksi: `pnpm db:deploy && pnpm build && pnpm start` di belakang HTTPS (cookie sesi otomatis `secure` di production).
 
-## Arsitektur (SAD §4.2)
+## Arsitektur (SAD)
 
-| Layer SAD | Implementasi |
-|---|---|
-| Presentation | `app/*/page.tsx` (Server Components) + `components/` |
-| API Layer | Server Actions `lib/actions/*` (auth, validasi, pesan error), `proxy.ts` (authentication middleware) |
-| Business Logic | `lib/stock.ts` (StockService, transaksi, pembatalan, koreksi), `lib/auth.ts` |
-| Data Access | Prisma Client `lib/db.ts` |
-| Database | PostgreSQL, skema `prisma/schema.prisma`, migration `prisma/migrations` |
+| Layer SAD      | Implementasi                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| Presentation   | `app/*/page.tsx` (Server Components) + `components/`                                                 |
+| API Layer      | Server Actions `lib/actions/*` (auth, validasi, pesan error), `proxy.ts` (authentication middleware) |
+| Business Logic | `lib/stock.ts` (StockService, transaksi, pembatalan, koreksi), `lib/auth.ts`                         |
+| Data Access    | Prisma Client `lib/db.ts`                                                                            |
+| Database       | PostgreSQL, skema `prisma/schema.prisma`, migration `prisma/migrations`                              |
 
 Endpoint REST konseptual di SAD §11.2 diwujudkan sebagai Server Actions, satu aksi per endpoint (mis. `saveTransaction` = POST /transactions/inbound|outbound, `decideRequest` = PATCH /corrections/:id).
 
