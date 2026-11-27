@@ -9,11 +9,3 @@ out
 graphify-out/
 tsconfig.tsbuildinfo
 
-# # ===== Fitur (dibuka bertahap sesuai progress) =====
-# /app/*/
-# /components/
-# /lib/*
-# !/lib/db.ts
-# /prisma/seed.ts
-# /prisma/check.ts
-# /proxy.ts
